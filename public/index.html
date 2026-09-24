@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta
+  name="viewport"
+  content="width=device-width,initial-scale=1"
+>
+
+<title>TXG Gateway RPS Tester</title>
+
+<style>
+
+body {
+  margin: 0;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+  background: #f5f5f5;
+}
+
+.box {
+  max-width: 600px;
+  margin: auto;
+  padding: 22px;
+  background: white;
+  border-radius: 16px;
+}
+
+input,
+button {
+  width: 100%;
+  padding: 13px;
+  margin-top: 8px;
+  box-sizing: border-box;
+}
+
+button {
+  margin-top: 18px;
+  font-weight: bold;
+}
+
+.target,
+.result {
+  margin-top: 15px;
+  padding: 14px;
+  background: #f1f1f1;
+  border-radius: 10px;
+  word-break: break-word;
+}
+
+.result {
+  white-space: pre-wrap;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="box">
+
+<h2>TXG Gateway RPS Tester</h2>
+
+<div class="target">
+<b>Target:</b><br>
+Configured Gateway
+</div>
+
+<label>
+Requests per second
+</label>
+
+<input
+  id="rps"
+  type="number"
+  min="1"
+  max="50"
+  value="10"
+  placeholder="Example: 21"
+/>
+
+<label>
+Total requests
+</label>
+
+<input
+  id="requests"
+  type="number"
+  min="1"
+  max="500"
+  value="100"
+  placeholder="Example: 500"
+/>
+
+<label>
+Test Key
+</label>
+
+<input
+  id="key"
+  type="password"
+  placeholder="Enter test key"
+/>
+
+<button
+  id="start"
+  onclick="startTest()"
+>
+START TEST
+</button>
+
+<div
+  id="result"
+  class="result"
+>
+Ready.
+
+Maximum:
+50 RPS
+500 total requests
+</div>
+
+</div>
+
+<script>
+
+async function startTest() {
+
+  const button =
+    document.getElementById("start");
+
+  const result =
+    document.getElementById("result");
+
+  const rps =
+    Number(
+      document.getElementById("rps").value
+    );
+
+  const requests =
+    Number(
+      document.getElementById("requests").value
+    );
+
+  const key =
+    document.getElementById("key").value.trim();
+
+
+  if (rps < 1 || rps > 50) {
+
+    result.textContent =
+      "❌ RPS must be between 1 and 50.";
+
+    return;
+  }
+
+
+  if (requests < 1 || requests > 500) {
+
+    result.textContent =
+      "❌ Total requests must be between 1 and 500.";
+
+    return;
+  }
+
+
+  if (!key) {
+
+    result.textContent =
+      "❌ Enter your test key.";
+
+    return;
+  }
+
+
+  button.disabled = true;
+
+  button.textContent =
+    "TESTING...";
+
+
+  result.textContent =
+    "🚀 Test running...\n\n" +
+    "RPS: " + rps + "\n" +
+    "Total: " + requests;
+
+
+  try {
+
+    const response =
+      await fetch("/api/loadtest", {
+
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+          "x-loadtest-key": key
+        },
+
+        body: JSON.stringify({
+          rps: rps,
+          requests: requests
+        })
+
+      });
+
+
+    const data =
+      await response.json();
+
+
+    if (!response.ok) {
+
+      result.textContent =
+        "❌ ERROR\n\n" +
+        (data.error || "Unknown error");
+
+      return;
+    }
+
+
+    result.textContent =
+
+      "✅ TEST COMPLETE\n\n" +
+
+      "Requested RPS: " +
+      data.requested_rps +
+
+      "\nActual RPS: " +
+      data.actual_rps +
+
+      "\nTotal Requests: " +
+      data.total_requests +
+
+      "\nSuccess: " +
+      data.success_count +
+
+      "\nFailed: " +
+      data.failed_count +
+
+      "\nDuration: " +
+      data.duration_seconds +
+      " sec" +
+
+      "\nAverage: " +
+      data.average_ms +
+      " ms" +
+
+      "\nP95: " +
+      data.p95_ms +
+      " ms" +
+
+      "\n\nStatus Codes:\n" +
+
+      JSON.stringify(
+        data.status_codes,
+        null,
+        2
+      );
+
+
+  } catch (error) {
+
+    result.textContent =
+      "❌ CONNECTION ERROR\n\n" +
+      error.message;
+
+  } finally {
+
+    button.disabled = false;
+
+    button.textContent =
+      "START TEST";
+  }
+}
+
+</script>
+
+</body>
+
+</html>
