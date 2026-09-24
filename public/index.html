@@ -40,6 +40,7 @@ button {
 button {
   margin-top: 18px;
   font-weight: bold;
+  cursor: pointer;
 }
 
 .target,
@@ -55,6 +56,10 @@ button {
   white-space: pre-wrap;
 }
 
+.gateway-url {
+  margin-top: 20px;
+}
+
 </style>
 
 </head>
@@ -64,11 +69,6 @@ button {
 <div class="box">
 
 <h2>TXG Gateway RPS Tester</h2>
-
-<div class="target">
-<b>Target:</b><br>
-Configured Gateway
-</div>
 
 <label>
 Requests per second
@@ -91,8 +91,8 @@ Total requests
   id="requests"
   type="number"
   min="1"
-  max="500000"
-  value="1000000"
+  max="500"
+  value="100"
   placeholder="Example: 500"
 />
 
@@ -107,6 +107,220 @@ Test Key
 />
 
 <button
+  id="start"
+  onclick="startTest()"
+>
+START TEST
+</button>
+
+<div
+  id="result"
+  class="result"
+>
+Ready.
+
+Maximum:
+50 RPS
+500 total requests
+</div>
+
+
+<!-- ============================= -->
+<!-- GATEWAY URL - BOTTOM -->
+<!-- ============================= -->
+
+<div class="gateway-url">
+
+<label>
+<b>Gateway URL</b>
+</label>
+
+<input
+  id="url"
+  type="url"
+  placeholder="https://your-gateway.com"
+  value="https://your-gateway.com"
+/>
+
+</div>
+
+
+</div>
+
+<script>
+
+async function startTest() {
+
+  const button =
+    document.getElementById("start");
+
+  const result =
+    document.getElementById("result");
+
+  const rps =
+    Number(
+      document.getElementById("rps").value
+    );
+
+  const requests =
+    Number(
+      document.getElementById("requests").value
+    );
+
+  const key =
+    document.getElementById("key").value.trim();
+
+  const url =
+    document.getElementById("url").value.trim();
+
+
+  if (rps < 1 || rps > 50) {
+
+    result.textContent =
+      "RPS must be between 1 and 50.";
+
+    return;
+  }
+
+
+  if (requests < 1 || requests > 500) {
+
+    result.textContent =
+      "Total requests must be between 1 and 500.";
+
+    return;
+  }
+
+
+  if (!key) {
+
+    result.textContent =
+      "Enter your test key.";
+
+    return;
+  }
+
+
+  if (!url) {
+
+    result.textContent =
+      "Enter Gateway URL.";
+
+    return;
+  }
+
+
+  button.disabled = true;
+
+  button.textContent =
+    "TESTING...";
+
+
+  result.textContent =
+    "Test running...\n\n" +
+    "URL: " + url + "\n" +
+    "RPS: " + rps + "\n" +
+    "Total: " + requests;
+
+
+  try {
+
+    const response =
+      await fetch("/api/loadtest", {
+
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+          "x-loadtest-key": key
+        },
+
+        body: JSON.stringify({
+          url: url,
+          rps: rps,
+          requests: requests
+        })
+
+      });
+
+
+    const data =
+      await response.json();
+
+
+    if (!response.ok) {
+
+      result.textContent =
+        "ERROR\n\n" +
+        (data.error || "Unknown error");
+
+      return;
+    }
+
+
+    result.textContent =
+
+      "TEST COMPLETE\n\n" +
+
+      "Target: " +
+      data.target +
+
+      "\nRequested RPS: " +
+      data.requested_rps +
+
+      "\nActual RPS: " +
+      data.actual_rps +
+
+      "\nTotal Requests: " +
+      data.total_requests +
+
+      "\nSuccess: " +
+      data.success_count +
+
+      "\nFailed: " +
+      data.failed_count +
+
+      "\nDuration: " +
+      data.duration_seconds +
+      " sec" +
+
+      "\nAverage: " +
+      data.average_ms +
+      " ms" +
+
+      "\nP95: " +
+      data.p95_ms +
+      " ms" +
+
+      "\n\nStatus Codes:\n" +
+
+      JSON.stringify(
+        data.status_codes,
+        null,
+        2
+      );
+
+
+  } catch (error) {
+
+    result.textContent =
+      "CONNECTION ERROR\n\n" +
+      error.message;
+
+  } finally {
+
+    button.disabled = false;
+
+    button.textContent =
+      "START TEST";
+  }
+}
+
+</script>
+
+</body>
+
+</html><button
   id="start"
   onclick="startTest()"
 >
