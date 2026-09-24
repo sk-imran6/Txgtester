@@ -1,6 +1,8 @@
 export default async function handler(req, res) {
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "POST only" });
+    return res.status(405).json({
+      error: "POST only"
+    });
   }
 
   const LOADTEST_KEY = "TXGTEST77878@TRSG";
@@ -53,25 +55,65 @@ export default async function handler(req, res) {
     });
   }
 
-  if (!Number.isFinite(rps)) rps = 10000;
-  if (!Number.isFinite(total)) total = 100000;
+  if (!Number.isFinite(rps)) {
+    rps = 10000;
+  }
+
+  if (!Number.isFinite(total)) {
+    total = 10000000;
+  }
+
+  // Safety limits
+  const MAX_RPS = 5000000000;
+  const MAX_REQUESTS = 5000000000000;
 
   rps = Math.min(
     Math.max(Math.floor(rps), 1),
-    50000000000
+    MAX_RPS
   );
 
   total = Math.min(
     Math.max(Math.floor(total), 1),
-    5000000000000
+    MAX_REQUESTS
   );
 
+  // Streaming response
+  res.statusCode = 200;
+
+  res.setHeader(
+    "Content-Type",
+    "application/x-ndjson; charset=utf-8"
+  );
+
+  res.setHeader(
+    "Cache-Control",
+    "no-cache, no-transform"
+  );
+
+  res.setHeader(
+    "Connection",
+    "keep-alive"
+  );
+
+  const send = data => {
+    res.write(JSON.stringify(data) + "\n");
+  };
+
+  let sent = 0;
   let success = 0;
   let failed = 0;
-  let sent = 0;
 
   const times = [];
   const statusCodes = {};
+
+  const startedAt = Date.now();
+
+  send({
+    type: "start",
+    target,
+    requested_rps: rps,
+    total_requests: total
+  });
 
   async function sendRequest() {
     const start = Date.now();
@@ -80,7 +122,7 @@ export default async function handler(req, res) {
       const response = await fetch(target, {
         method: "GET",
         headers: {
-          "User-Agent": "TXG-Gateway-LoadTest/1.0"
+          "User-Agent": "TXG-Controlled-LoadTest/1.0"
         },
         signal: AbortSignal.timeout(10000)
       });
@@ -113,8 +155,6 @@ export default async function handler(req, res) {
     }
   }
 
-  const testStart = Date.now();
-
   while (sent < total) {
 
     const batch = Math.min(
@@ -128,9 +168,33 @@ export default async function handler(req, res) {
       jobs.push(sendRequest());
     }
 
+    await Promise.all(jobs);
+
     sent += batch;
 
-    await Promise.all(jobs);
+    const elapsed =
+      (Date.now() - startedAt) / 1000;
+
+    send({
+      type: "progress",
+
+      sent,
+
+      total,
+
+      success,
+
+      failed,
+
+      elapsed_seconds:
+        Number(elapsed.toFixed(2)),
+
+      current_rps:
+        Number(
+          (sent / Math.max(elapsed, 0.001))
+            .toFixed(2)
+        )
+    });
 
     if (sent < total) {
       await new Promise(resolve =>
@@ -140,7 +204,7 @@ export default async function handler(req, res) {
   }
 
   const duration =
-    (Date.now() - testStart) / 1000;
+    (Date.now() - startedAt) / 1000;
 
   times.sort((a, b) => a - b);
 
@@ -160,16 +224,18 @@ export default async function handler(req, res) {
         ]
       : 0;
 
-  return res.status(200).json({
-
-    success: true,
+  send({
+    type: "complete",
 
     target,
 
     requested_rps: rps,
 
     actual_rps:
-      Number((sent / duration).toFixed(2)),
+      Number(
+        (sent / Math.max(duration, 0.001))
+          .toFixed(2)
+      ),
 
     total_requests: total,
 
@@ -188,6 +254,7 @@ export default async function handler(req, res) {
     p95_ms: p95,
 
     status_codes: statusCodes
-
   });
+
+  res.end();
 }
