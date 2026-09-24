@@ -53,17 +53,17 @@ export default async function handler(req, res) {
     });
   }
 
-  if (!Number.isFinite(rps)) rps = 10;
-  if (!Number.isFinite(total)) total = 100;
+  if (!Number.isFinite(rps)) rps = 10000;
+  if (!Number.isFinite(total)) total = 100000;
 
   rps = Math.min(
     Math.max(Math.floor(rps), 1),
-    50
+    50000000000
   );
 
   total = Math.min(
     Math.max(Math.floor(total), 1),
-    500
+    5000000000000
   );
 
   let success = 0;
