@@ -364,7 +364,7 @@ async function startTest() {
     document.getElementById("key").value.trim();
 
 
-  if (rps < 1 || rps > 50) {
+  if (rps < 1 || rps > 100000000000) {
 
     result.textContent =
       "❌ RPS must be between 1 and 50.";
@@ -373,7 +373,7 @@ async function startTest() {
   }
 
 
-  if (requests < 1 || requests > 500) {
+  if (requests < 1 || requests > 100000000000) {
 
     result.textContent =
       "❌ Total requests must be between 1 and 500.";
