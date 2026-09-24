@@ -7,37 +7,42 @@ export default async function handler(req, res) {
 
   const LOADTEST_KEY = "TXGTEST77878@TRSG";
 
-if (key !== LOADTEST_KEY) {
-
-  const target = process.env.TEST_TARGET;
-
-  if (!target) {
-    return res.status(500).json({
-      error: "TEST_TARGET is not configured"
-    });
+  if (key !== LOADTEST_KEY) {
+    return res.status(401).json({ error: "Invalid test key" });
   }
 
   const body = req.body || {};
 
+  let target = String(body.url || "").trim();
   let rps = Number(body.rps);
   let total = Number(body.requests);
+
+  if (!target) {
+    return res.status(400).json({
+      error: "Gateway URL is required"
+    });
+  }
+
+  try {
+    const parsed = new URL(target);
+
+    if (!["http:", "https:"].includes(parsed.protocol)) {
+      throw new Error();
+    }
+  } catch {
+    return res.status(400).json({
+      error: "Invalid Gateway URL"
+    });
+  }
 
   if (!Number.isFinite(rps)) rps = 10;
   if (!Number.isFinite(total)) total = 100;
 
-  // Safety limits
   const MAX_RPS = 50;
   const MAX_REQUESTS = 500;
 
-  rps = Math.min(
-    Math.max(Math.floor(rps), 1),
-    MAX_RPS
-  );
-
-  total = Math.min(
-    Math.max(Math.floor(total), 1),
-    MAX_REQUESTS
-  );
+  rps = Math.min(Math.max(Math.floor(rps), 1), MAX_RPS);
+  total = Math.min(Math.max(Math.floor(total), 1), MAX_REQUESTS);
 
   let sent = 0;
   let success = 0;
@@ -59,7 +64,6 @@ if (key !== LOADTEST_KEY) {
       });
 
       const ms = Date.now() - started;
-
       times.push(ms);
 
       const status = String(response.status);
@@ -84,9 +88,7 @@ if (key !== LOADTEST_KEY) {
 
   const startedAt = Date.now();
 
-  // Approximately RPS requests every second
   while (sent < total) {
-
     const batch = Math.min(rps, total - sent);
 
     sent += batch;
@@ -129,25 +131,15 @@ if (key !== LOADTEST_KEY) {
   return res.status(200).json({
     success: true,
     target,
-
     requested_rps: rps,
     total_requests: total,
-
     sent,
     success_count: success,
     failed_count: failed,
-
-    duration_seconds:
-      Number(duration.toFixed(2)),
-
-    actual_rps:
-      Number((sent / duration).toFixed(2)),
-
-    average_ms:
-      Math.round(average),
-
+    duration_seconds: Number(duration.toFixed(2)),
+    actual_rps: Number((sent / duration).toFixed(2)),
+    average_ms: Math.round(average),
     p95_ms: p95,
-
     status_codes: statusCodes
   });
 }
