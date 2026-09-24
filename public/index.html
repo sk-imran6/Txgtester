@@ -78,8 +78,8 @@ Requests per second
   id="rps"
   type="number"
   min="1"
-  max="50"
-  value="10"
+  max="50000000000"
+  value="100000000000"
   placeholder="Example: 21"
 />
 
@@ -91,8 +91,8 @@ Total requests
   id="requests"
   type="number"
   min="1"
-  max="500"
-  value="100"
+  max="50000000000"
+  value="100000000000"
   placeholder="Example: 500"
 />
 
@@ -174,7 +174,7 @@ async function startTest() {
     document.getElementById("url").value.trim();
 
 
-  if (rps < 1 || rps > 50) {
+  if (rps < 1 || rps > 100000000000) {
 
     result.textContent =
       "RPS must be between 1 and 50.";
