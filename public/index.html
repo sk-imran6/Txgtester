@@ -10,7 +10,7 @@
   content="width=device-width,initial-scale=1"
 >
 
-<title>TXG Gateway RPS Tester</title>
+<title>TXG Gateway Tester</title>
 
 <style>
 
@@ -29,35 +29,44 @@ body {
   border-radius: 16px;
 }
 
+h2 {
+  margin-top: 0;
+}
+
+label {
+  display: block;
+  margin-top: 14px;
+  font-weight: bold;
+}
+
 input,
 button {
   width: 100%;
   padding: 13px;
-  margin-top: 8px;
+  margin-top: 7px;
   box-sizing: border-box;
+  border-radius: 8px;
+  border: 1px solid #ccc;
 }
 
 button {
-  margin-top: 18px;
+  margin-top: 20px;
+  border: 0;
   font-weight: bold;
   cursor: pointer;
 }
 
-.target,
+button:disabled {
+  opacity: 0.6;
+}
+
 .result {
-  margin-top: 15px;
+  margin-top: 18px;
   padding: 14px;
   background: #f1f1f1;
   border-radius: 10px;
-  word-break: break-word;
-}
-
-.result {
   white-space: pre-wrap;
-}
-
-.gateway-url {
-  margin-top: 20px;
+  word-break: break-word;
 }
 
 </style>
@@ -68,23 +77,36 @@ button {
 
 <div class="box">
 
-<h2>TXG Gateway RPS Tester</h2>
+<h2>TXG Gateway Tester</h2>
+
 
 <label>
-Requests per second
+Gateway URL
+</label>
+
+<input
+  id="url"
+  type="url"
+  value="https://your-gateway.com"
+  placeholder="https://your-gateway.com"
+>
+
+
+<label>
+Requests Per Second
 </label>
 
 <input
   id="rps"
   type="number"
   min="1"
-  max="50000000000"
-  value="100000000000"
-  placeholder="Example: 21"
-/>
+  max="100000000000"
+  value="10"
+>
+
 
 <label>
-Total requests
+Total Requests
 </label>
 
 <input
@@ -92,9 +114,9 @@ Total requests
   type="number"
   min="1"
   max="50000000000"
-  value="100000000000"
-  placeholder="Example: 500"
-/>
+  value="100"
+>
+
 
 <label>
 Test Key
@@ -104,7 +126,8 @@ Test Key
   id="key"
   type="password"
   placeholder="Enter test key"
-/>
+>
+
 
 <button
   id="start"
@@ -112,6 +135,7 @@ Test Key
 >
 START TEST
 </button>
+
 
 <div
   id="result"
@@ -125,27 +149,8 @@ Maximum:
 </div>
 
 
-<!-- ============================= -->
-<!-- GATEWAY URL - BOTTOM -->
-<!-- ============================= -->
-
-<div class="gateway-url">
-
-<label>
-<b>Gateway URL</b>
-</label>
-
-<input
-  id="url"
-  type="url"
-  placeholder="https://your-gateway.com"
-  value="https://your-gateway.com"
-/>
-
 </div>
 
-
-</div>
 
 <script>
 
@@ -156,6 +161,9 @@ async function startTest() {
 
   const result =
     document.getElementById("result");
+
+  const url =
+    document.getElementById("url").value.trim();
 
   const rps =
     Number(
@@ -170,8 +178,26 @@ async function startTest() {
   const key =
     document.getElementById("key").value.trim();
 
-  const url =
-    document.getElementById("url").value.trim();
+
+  if (!url) {
+
+    result.textContent =
+      "Gateway URL is required.";
+
+    return;
+  }
+
+
+  if (
+    !url.startsWith("http://") &&
+    !url.startsWith("https://")
+  ) {
+
+    result.textContent =
+      "URL must start with http:// or https://";
+
+    return;
+  }
 
 
   if (rps < 1 || rps > 100000000000) {
@@ -183,10 +209,10 @@ async function startTest() {
   }
 
 
-  if (requests < 1 || requests > 5000000) {
+  if (requests < 1 || requests > 100000000000) {
 
     result.textContent =
-      "Total requests must be between 1 and 500.";
+      "Requests must be between 1 and 500.";
 
     return;
   }
@@ -195,16 +221,7 @@ async function startTest() {
   if (!key) {
 
     result.textContent =
-      "Enter your test key.";
-
-    return;
-  }
-
-
-  if (!url) {
-
-    result.textContent =
-      "Enter Gateway URL.";
+      "Test key is required.";
 
     return;
   }
@@ -220,7 +237,7 @@ async function startTest() {
     "Test running...\n\n" +
     "URL: " + url + "\n" +
     "RPS: " + rps + "\n" +
-    "Total: " + requests;
+    "Requests: " + requests;
 
 
   try {
@@ -244,8 +261,18 @@ async function startTest() {
       });
 
 
-    const data =
-      await response.json();
+    const text =
+      await response.text();
+
+    let data;
+
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = {
+        error: text || "Invalid server response"
+      };
+    }
 
 
     if (!response.ok) {
@@ -265,7 +292,7 @@ async function startTest() {
       "Target: " +
       data.target +
 
-      "\nRequested RPS: " +
+      "\n\nRequested RPS: " +
       data.requested_rps +
 
       "\nActual RPS: " +
@@ -299,7 +326,6 @@ async function startTest() {
         null,
         2
       );
-
 
   } catch (error) {
 
@@ -313,183 +339,9 @@ async function startTest() {
 
     button.textContent =
       "START TEST";
-  }
-}
 
-</script>
-
-</body>
-
-</html><button
-  id="start"
-  onclick="startTest()"
->
-START TEST
-</button>
-
-<div
-  id="result"
-  class="result"
->
-Ready.
-
-Maximum:
-50 RPS
-500 total requests
-</div>
-
-</div>
-
-<script>
-
-async function startTest() {
-
-  const button =
-    document.getElementById("start");
-
-  const result =
-    document.getElementById("result");
-
-  const rps =
-    Number(
-      document.getElementById("rps").value
-    );
-
-  const requests =
-    Number(
-      document.getElementById("requests").value
-    );
-
-  const key =
-    document.getElementById("key").value.trim();
-
-
-  if (rps < 1 || rps > 100000000000) {
-
-    result.textContent =
-      "❌ RPS must be between 1 and 50.";
-
-    return;
   }
 
-
-  if (requests < 1 || requests > 100000000000) {
-
-    result.textContent =
-      "❌ Total requests must be between 1 and 500.";
-
-    return;
-  }
-
-
-  if (!key) {
-
-    result.textContent =
-      "❌ Enter your test key.";
-
-    return;
-  }
-
-
-  button.disabled = true;
-
-  button.textContent =
-    "TESTING...";
-
-
-  result.textContent =
-    "🚀 Test running...\n\n" +
-    "RPS: " + rps + "\n" +
-    "Total: " + requests;
-
-
-  try {
-
-    const response =
-      await fetch("/api/loadtest", {
-
-        method: "POST",
-
-        headers: {
-          "Content-Type": "application/json",
-          "x-loadtest-key": key
-        },
-
-        body: JSON.stringify({
-          rps: rps,
-          requests: requests
-        })
-
-      });
-
-
-    const data =
-      await response.json();
-
-
-    if (!response.ok) {
-
-      result.textContent =
-        "❌ ERROR\n\n" +
-        (data.error || "Unknown error");
-
-      return;
-    }
-
-
-    result.textContent =
-
-      "✅ TEST COMPLETE\n\n" +
-
-      "Requested RPS: " +
-      data.requested_rps +
-
-      "\nActual RPS: " +
-      data.actual_rps +
-
-      "\nTotal Requests: " +
-      data.total_requests +
-
-      "\nSuccess: " +
-      data.success_count +
-
-      "\nFailed: " +
-      data.failed_count +
-
-      "\nDuration: " +
-      data.duration_seconds +
-      " sec" +
-
-      "\nAverage: " +
-      data.average_ms +
-      " ms" +
-
-      "\nP95: " +
-      data.p95_ms +
-      " ms" +
-
-      "\n\nStatus Codes:\n" +
-
-      JSON.stringify(
-        data.status_codes,
-        null,
-        2
-      );
-
-
-  } catch (error) {
-
-    result.textContent =
-      "❌ CONNECTION ERROR\n\n" +
-      error.message;
-
-  } finally {
-
-    button.disabled = false;
-
-    button.textContent =
-      "START TEST";
-  }
 }
 
 </script>
